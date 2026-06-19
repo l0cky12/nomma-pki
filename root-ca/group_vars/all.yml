@@ -1,0 +1,47 @@
+---
+# NOMMA Offline Root CA defaults.
+# This playbook is intended to run only on an offline/air-gapped Root CA host.
+
+pki_org_name: "New Orleans Military & Maritime Academy"
+pki_org_unit: "Information Technology"
+pki_country: "US"
+pki_state: "Louisiana"
+pki_locality: "New Orleans"
+
+root_ca_common_name: "NOMMA Offline Root CA"
+issuing_ca_common_name: "NOMMA Issuing CA"
+
+root_ca_base_dir: "{{ playbook_dir }}/../pki/root-ca"
+root_ca_private_dir: "{{ root_ca_base_dir }}/private"
+root_ca_certs_dir: "{{ root_ca_base_dir }}/certs"
+root_ca_csr_dir: "{{ root_ca_base_dir }}/csr"
+root_ca_newcerts_dir: "{{ root_ca_base_dir }}/newcerts"
+root_ca_db_dir: "{{ root_ca_base_dir }}/db"
+root_ca_artifacts_dir: "{{ playbook_dir }}/../artifacts"
+
+root_ca_key_path: "{{ root_ca_private_dir }}/nomma-root-ca.key.pem"
+root_ca_cert_path: "{{ root_ca_certs_dir }}/nomma-root-ca.cert.pem"
+root_ca_openssl_cnf: "{{ root_ca_base_dir }}/openssl.cnf"
+
+issuing_ca_key_path: "{{ root_ca_private_dir }}/nomma-issuing-ca.key.pem"
+issuing_ca_csr_path: "{{ root_ca_csr_dir }}/nomma-issuing-ca.csr.pem"
+issuing_ca_cert_path: "{{ root_ca_certs_dir }}/nomma-issuing-ca.cert.pem"
+ca_chain_path: "{{ root_ca_certs_dir }}/nomma-ca-chain.cert.pem"
+
+root_ca_key_bits: 4096
+issuing_ca_key_bits: 4096
+root_ca_days: 7300
+issuing_ca_days: 3650
+root_ca_digest: sha256
+
+root_ca_subject: >-
+  /C={{ pki_country }}/ST={{ pki_state }}/L={{ pki_locality }}
+  /O={{ pki_org_name }}/OU={{ pki_org_unit }}/CN={{ root_ca_common_name }}
+
+issuing_ca_subject: >-
+  /C={{ pki_country }}/ST={{ pki_state }}/L={{ pki_locality }}
+  /O={{ pki_org_name }}/OU={{ pki_org_unit }}/CN={{ issuing_ca_common_name }}
+
+# Set true only when intentionally replacing CA material on an offline host.
+root_ca_force_recreate: false
+issuing_ca_force_recreate: false

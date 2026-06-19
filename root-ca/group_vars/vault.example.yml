@@ -1,0 +1,9 @@
+---
+# Copy to vault.yml and encrypt with ansible-vault before real use.
+# Do not commit vault.yml.
+
+# Passphrase used to encrypt the offline Root CA private key.
+vault_root_ca_key_passphrase: "CHANGEME-root-ca-passphrase"
+
+# Optional separate passphrase for the intermediate private key generated offline.
+vault_issuing_ca_key_passphrase: "CHANGEME-issuing-ca-passphrase"

@@ -1,0 +1,46 @@
+---
+# NOMMA OFFLINE Root CA — Master Playbook
+#
+# Run only on the offline Root CA host. This playbook creates the Root CA,
+# creates an Intermediate/Issuing CA key and CSR, signs the Intermediate CA,
+# and exports only public artifacts needed by the online Issuing CA.
+
+- name: Build NOMMA offline Root CA and sign Issuing CA
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  roles:
+    - role: root_ca
+      tags: [root-ca, pki]
+
+    - role: intermediate_ca
+      tags: [intermediate-ca, issuing-ca, pki]
+
+    - role: export_artifacts
+      tags: [artifacts, export, pki]
+
+  post_tasks:
+    - name: Verify exported Root CA certificate exists
+      ansible.builtin.stat:
+        path: "{{ root_ca_artifacts_dir }}/nomma-root-ca.cert.pem"
+      register: root_ca_exported_root_cert
+
+    - name: Verify exported Issuing CA certificate exists
+      ansible.builtin.stat:
+        path: "{{ root_ca_artifacts_dir }}/nomma-issuing-ca.cert.pem"
+      register: root_ca_exported_issuing_cert
+
+    - name: Verify exported CA chain exists
+      ansible.builtin.stat:
+        path: "{{ root_ca_artifacts_dir }}/nomma-ca-chain.cert.pem"
+      register: root_ca_exported_chain
+
+    - name: Confirm public artifact export succeeded
+      ansible.builtin.assert:
+        that:
+          - root_ca_exported_root_cert.stat.exists
+          - root_ca_exported_issuing_cert.stat.exists
+          - root_ca_exported_chain.stat.exists
+        success_msg: "Root CA public artifacts are ready in root-ca/artifacts/."
+        fail_msg: "One or more public artifacts failed to export."

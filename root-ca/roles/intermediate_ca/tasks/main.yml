@@ -1,0 +1,76 @@
+---
+- name: Check whether Issuing CA private key exists
+  ansible.builtin.stat:
+    path: "{{ issuing_ca_key_path }}"
+  register: intermediate_ca_key_stat
+
+- name: Stop before replacing existing Issuing CA key unless explicitly forced
+  ansible.builtin.assert:
+    that:
+      - not intermediate_ca_key_stat.stat.exists or not issuing_ca_force_recreate | bool
+    fail_msg: >-
+      Issuing CA key already exists and issuing_ca_force_recreate=true was requested.
+      Refusing destructive replacement. Move the old key manually if this is intentional.
+
+- name: Generate encrypted Issuing CA private key offline
+  ansible.builtin.command:
+    cmd: >-
+      openssl genrsa -aes256
+      -passout pass:{{ vault_issuing_ca_key_passphrase }}
+      -out {{ issuing_ca_key_path }} {{ issuing_ca_key_bits }}
+    creates: "{{ issuing_ca_key_path }}"
+  no_log: true
+
+- name: Harden Issuing CA private key permissions
+  ansible.builtin.file:
+    path: "{{ issuing_ca_key_path }}"
+    mode: "0400"
+
+- name: Generate Issuing CA CSR
+  ansible.builtin.command:
+    cmd: >-
+      openssl req -new
+      -key {{ issuing_ca_key_path }}
+      -passin pass:{{ vault_issuing_ca_key_passphrase }}
+      -subj "{{ issuing_ca_subject }}"
+      -out {{ issuing_ca_csr_path }}
+    creates: "{{ issuing_ca_csr_path }}"
+  no_log: true
+
+- name: Set Issuing CA CSR permissions
+  ansible.builtin.file:
+    path: "{{ issuing_ca_csr_path }}"
+    mode: "0644"
+
+- name: Sign Issuing CA certificate with offline Root CA
+  ansible.builtin.command:
+    cmd: >-
+      openssl ca -batch -config {{ root_ca_openssl_cnf }}
+      -extensions v3_intermediate_ca
+      -days {{ issuing_ca_days }} -notext -md {{ root_ca_digest }}
+      -passin pass:{{ vault_root_ca_key_passphrase }}
+      -in {{ issuing_ca_csr_path }}
+      -out {{ issuing_ca_cert_path }}
+    creates: "{{ issuing_ca_cert_path }}"
+  no_log: true
+
+- name: Set Issuing CA certificate permissions
+  ansible.builtin.file:
+    path: "{{ issuing_ca_cert_path }}"
+    mode: "0644"
+
+- name: Build CA chain certificate
+  ansible.builtin.shell:
+    cmd: >-
+      cat {{ issuing_ca_cert_path }} {{ root_ca_cert_path }} > {{ ca_chain_path }}
+    creates: "{{ ca_chain_path }}"
+
+- name: Verify Issuing CA certificate against Root CA
+  ansible.builtin.command:
+    cmd: "openssl verify -CAfile {{ root_ca_cert_path }} {{ issuing_ca_cert_path }}"
+  changed_when: false
+  register: intermediate_ca_verify
+
+- name: Show Issuing CA verification result
+  ansible.builtin.debug:
+    var: intermediate_ca_verify.stdout

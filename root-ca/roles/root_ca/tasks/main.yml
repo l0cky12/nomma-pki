@@ -1,0 +1,100 @@
+---
+- name: Refuse to run on non-local delegated hosts
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname == 'localhost'
+    fail_msg: "Root CA playbook must run on the offline localhost only."
+
+- name: Create Root CA directory structure
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ root_ca_base_dir }}"
+      mode: "0700"
+    - path: "{{ root_ca_private_dir }}"
+      mode: "0700"
+    - path: "{{ root_ca_certs_dir }}"
+      mode: "0755"
+    - path: "{{ root_ca_csr_dir }}"
+      mode: "0755"
+    - path: "{{ root_ca_newcerts_dir }}"
+      mode: "0755"
+    - path: "{{ root_ca_db_dir }}"
+      mode: "0700"
+
+- name: Initialize Root CA serial file
+  ansible.builtin.copy:
+    content: "1000\n"
+    dest: "{{ root_ca_db_dir }}/serial"
+    mode: "0600"
+    force: false
+
+- name: Initialize Root CA index database
+  ansible.builtin.copy:
+    content: ""
+    dest: "{{ root_ca_db_dir }}/index.txt"
+    mode: "0600"
+    force: false
+
+- name: Deploy Root CA OpenSSL configuration
+  ansible.builtin.template:
+    src: openssl-root.cnf.j2
+    dest: "{{ root_ca_openssl_cnf }}"
+    mode: "0644"
+
+- name: Check whether Root CA private key exists
+  ansible.builtin.stat:
+    path: "{{ root_ca_key_path }}"
+  register: root_ca_key_stat
+
+- name: Stop before replacing existing Root CA key unless explicitly forced
+  ansible.builtin.assert:
+    that:
+      - not root_ca_key_stat.stat.exists or not root_ca_force_recreate | bool
+    fail_msg: >-
+      Root CA key already exists and root_ca_force_recreate=true was requested.
+      Refusing destructive replacement. Move the old key manually if this is intentional.
+
+- name: Generate encrypted Root CA private key
+  ansible.builtin.command:
+    cmd: >-
+      openssl genrsa -aes256
+      -passout pass:{{ vault_root_ca_key_passphrase }}
+      -out {{ root_ca_key_path }} {{ root_ca_key_bits }}
+    creates: "{{ root_ca_key_path }}"
+  no_log: true
+
+- name: Harden Root CA private key permissions
+  ansible.builtin.file:
+    path: "{{ root_ca_key_path }}"
+    mode: "0400"
+
+- name: Generate self-signed Root CA certificate
+  ansible.builtin.command:
+    cmd: >-
+      openssl req -config {{ root_ca_openssl_cnf }}
+      -key {{ root_ca_key_path }}
+      -passin pass:{{ vault_root_ca_key_passphrase }}
+      -new -x509 -days {{ root_ca_days }} -{{ root_ca_digest }}
+      -extensions v3_root_ca
+      -subj "{{ root_ca_subject }}"
+      -out {{ root_ca_cert_path }}
+    creates: "{{ root_ca_cert_path }}"
+  no_log: true
+
+- name: Set Root CA certificate permissions
+  ansible.builtin.file:
+    path: "{{ root_ca_cert_path }}"
+    mode: "0644"
+
+- name: Verify Root CA certificate
+  ansible.builtin.command:
+    cmd: "openssl x509 -in {{ root_ca_cert_path }} -noout -text"
+  changed_when: false
+  register: root_ca_cert_verify
+
+- name: Show Root CA certificate subject
+  ansible.builtin.debug:
+    msg: "{{ root_ca_cert_verify.stdout | regex_search('Subject:.*') }}"
