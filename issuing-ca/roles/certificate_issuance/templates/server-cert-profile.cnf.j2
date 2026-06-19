@@ -1,0 +1,29 @@
+#
+# {{ ansible_managed }}
+# NOMMA Server Certificate Profile
+# Use as: openssl req -config this-file.cnf -new -newkey rsa:2048 ...
+
+[ req ]
+default_bits            = 2048
+default_md              = sha384
+prompt                  = no
+encrypt_key             = yes
+distinguished_name      = req_distinguished_name
+req_extensions          = req_ext
+
+[ req_distinguished_name ]
+countryName             = {{ pki_country }}
+stateOrProvinceName     = {{ pki_state }}
+localityName            = {{ pki_locality }}
+organizationName        = {{ pki_organization }}
+organizationalUnitName  = {{ pki_org_unit }}
+# REPLACE with actual server hostname:
+commonName              = server.nomma.tech
+
+[ req_ext ]
+subjectAltName          = @alt_names
+
+[ alt_names ]
+# REPLACE with actual DNS names:
+DNS.1 = server.nomma.tech
+DNS.2 = server.nomma.lan

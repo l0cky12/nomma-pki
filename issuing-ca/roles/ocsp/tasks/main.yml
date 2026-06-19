@@ -1,0 +1,102 @@
+---
+# NOMMA Issuing CA — OCSP Responder Role (OPTIONAL)
+#
+# Deploys an Online Certificate Status Protocol (OCSP) responder
+# using OpenSSL's built-in OCSP server behind Nginx.
+#
+# OCSP provides real-time certificate revocation status, which is
+# more responsive than CRLs (which are updated periodically).
+#
+# THIS ROLE IS OPTIONAL — controlled by ocsp_enabled variable.
+# Default: disabled (ocsp_enabled: false)
+
+- name: Install Nginx for OCSP reverse proxy
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+
+- name: Create OCSP data directory
+  ansible.builtin.file:
+    path: /var/lib/ocsp
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# ── OCSP Signing Certificate ─────────────────────────────────────────
+# OCSP responses must be signed by either the CA itself or a
+# delegated OCSP signing certificate. Using a delegated cert is
+# preferred — it limits exposure if compromised.
+
+- name: Generate OCSP signing private key (if not exists)
+  ansible.builtin.command:
+    cmd: >
+      openssl genrsa -out /var/lib/ocsp/ocsp-signing.key.pem 2048
+    creates: /var/lib/ocsp/ocsp-signing.key.pem
+
+- name: Secure OCSP signing key
+  ansible.builtin.file:
+    path: /var/lib/ocsp/ocsp-signing.key.pem
+    owner: root
+    group: root
+    mode: "0400"
+
+# Note: The OCSP signing certificate must be issued by the CA.
+# This is a manual step; uncomment below after generating the CSR:
+#
+# - name: Generate OCSP signing CSR
+#   ansible.builtin.command:
+#     cmd: >
+#       openssl req -new -key /var/lib/ocsp/ocsp-signing.key.pem
+#       -out /var/lib/ocsp/ocsp-signing.csr.pem
+#       -subj "/C={{ pki_country }}/ST={{ pki_state }}/L={{ pki_locality }}/O={{ pki_organization }}/OU={{ pki_org_unit }}/CN=NOMMA OCSP Responder"
+#     creates: /var/lib/ocsp/ocsp-signing.csr.pem
+#
+# - name: Issue OCSP signing certificate
+#   ansible.builtin.command:
+#     cmd: >
+#       openssl ca -config {{ issuing_ca_openssl_cnf }}
+#       -extensions v3_ocsp_cert -days 397 -notext
+#       -in /var/lib/ocsp/ocsp-signing.csr.pem
+#       -out /var/lib/ocsp/ocsp-signing.cert.pem
+#     creates: /var/lib/ocsp/ocsp-signing.cert.pem
+
+# ── OCSP Responder Systemd Service ───────────────────────────────────
+- name: Deploy OCSP responder systemd unit
+  ansible.builtin.template:
+    src: ocsp-responder.service.j2
+    dest: /etc/systemd/system/nomma-ocsp-responder.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable and start OCSP responder
+  ansible.builtin.systemd:
+    name: nomma-ocsp-responder
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# ── Nginx OCSP Proxy ─────────────────────────────────────────────────
+- name: Deploy Nginx OCSP configuration
+  ansible.builtin.template:
+    src: nginx-ocsp.conf.j2
+    dest: /etc/nginx/sites-available/nomma-ocsp
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload Nginx
+
+- name: Enable Nginx OCSP site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/nomma-ocsp
+    dest: /etc/nginx/sites-enabled/nomma-ocsp
+    state: link
+  notify: Reload Nginx
+
+- name: Ensure Nginx is running
+  ansible.builtin.systemd:
+    name: nginx
+    state: started
+    enabled: true

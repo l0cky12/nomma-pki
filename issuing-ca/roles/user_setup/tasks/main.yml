@@ -1,0 +1,38 @@
+---
+# NOMMA Issuing CA — User Setup Role
+#
+# Creates the ldecareaux administrative user and required directories.
+# Password comes from Ansible Vault (group_vars/vault.yml).
+
+- name: Ensure ldecareaux group exists
+  ansible.builtin.group:
+    name: "{{ admin_group }}"
+    state: present
+
+- name: Create ldecareaux user
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    group: "{{ admin_group }}"
+    password: "{{ vault_admin_password }}"
+    shell: /bin/bash
+    create_home: true
+    home: "/home/{{ admin_user }}"
+    state: present
+  # Password hash comes from Vault — never logged
+  no_log: true
+
+- name: Ensure .ssh directory exists with secure permissions
+  ansible.builtin.file:
+    path: "/home/{{ admin_user }}/.ssh"
+    state: directory
+    owner: "{{ admin_user }}"
+    group: "{{ admin_group }}"
+    mode: "0700"  # SSH requires owner-only access to .ssh
+
+- name: Create certificate staging directory
+  ansible.builtin.file:
+    path: "{{ admin_cert_dir }}"
+    state: directory
+    owner: "{{ admin_user }}"
+    group: "{{ admin_group }}"
+    mode: "0750"

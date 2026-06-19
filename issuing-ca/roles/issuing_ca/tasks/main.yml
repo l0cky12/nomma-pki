@@ -1,0 +1,226 @@
+---
+# NOMMA Issuing CA — Core CA Deployment Role
+#
+# DEPLOYS:
+#   - CA directory structure (/opt/nomma-issuing-ca/)
+#   - OpenSSL configuration
+#   - CA database files (index.txt, serial, crlnumber)
+#   - Imports Root CA certificate from offline Root CA artifacts
+#   - Imports signed Intermediate CA certificate
+#   - Validates the entire trust chain
+#
+# PREREQUISITES:
+#   Before running this playbook, the following files must be available
+#   on the control node (placed there after Root CA signing):
+#
+#     root-ca/artifacts/nomma-root-ca.cert.pem        ← Root CA certificate
+#     root-ca/artifacts/nomma-issuing-ca.cert.pem     ← Signed Intermediate CA cert
+#     root-ca/artifacts/nomma-ca-chain.cert.pem       ← Full chain (Intermediate + Root)
+#
+#   NEVER copy the Root CA private key — it must stay offline.
+
+# ── Install Packages ─────────────────────────────────────────────────
+- name: Install required system packages
+  ansible.builtin.apt:
+    name: "{{ required_packages + network_packages + utility_packages }}"
+    state: present
+
+# ── CA Directory Structure ───────────────────────────────────────────
+- name: Create Issuing CA directory tree
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ issuing_ca_base_dir }}"
+    - "{{ issuing_ca_certs_dir }}"
+    - "{{ issuing_ca_crl_dir }}"
+    - "{{ issuing_ca_csr_dir }}"
+    - "{{ issuing_ca_newcerts_dir }}"
+    - "{{ issuing_ca_private_dir }}"
+    - "{{ issuing_ca_issued_dir }}"
+    - "{{ issuing_ca_requests_dir }}"
+    - "{{ issuing_ca_revoked_dir }}"
+
+- name: Secure the private key directory
+  ansible.builtin.file:
+    path: "{{ issuing_ca_private_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+    # 0700 = only root can enter this directory
+    # This directory holds Intermediate CA private keys —
+    # compromise means attacker can issue arbitrary certificates
+
+# ── CA Database Initialization ───────────────────────────────────────
+- name: Initialize CA serial number
+  ansible.builtin.copy:
+    content: "1000\n"
+    dest: "{{ issuing_ca_serial }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false  # Don't overwrite if already initialized
+
+- name: Initialize CA certificate index
+  ansible.builtin.file:
+    path: "{{ issuing_ca_index }}"
+    state: touch
+    owner: root
+    group: root
+    mode: "0644"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Initialize CA index attributes
+  ansible.builtin.copy:
+    content: "unique_subject = yes\n"
+    dest: "{{ issuing_ca_index_attr }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+
+- name: Initialize CRL number
+  ansible.builtin.copy:
+    content: "1000\n"
+    dest: "{{ issuing_ca_crlnumber }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+
+# ── Deploy OpenSSL Configuration ─────────────────────────────────────
+- name: Deploy OpenSSL configuration from template
+  ansible.builtin.template:
+    src: openssl.cnf.j2
+    dest: "{{ issuing_ca_openssl_cnf }}"
+    owner: root
+    group: root
+    mode: "0644"
+  # 0644 = world-readable — contains no secrets, only CA policy
+
+- name: Validate OpenSSL configuration syntax
+  ansible.builtin.command:
+    cmd: "openssl version"
+  changed_when: false
+
+# ── Import Root CA Certificate ───────────────────────────────────────
+- name: Check if Root CA certificate exists on control node
+  ansible.builtin.stat:
+    path: "{{ root_ca_cert_src }}"
+  delegate_to: localhost
+  become: false
+  register: issuing_ca_root_ca_cert_stat
+
+- name: Import Root CA certificate onto server
+  ansible.builtin.copy:
+    src: "{{ root_ca_cert_src }}"
+    dest: "{{ root_ca_cert_dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: issuing_ca_root_ca_cert_stat.stat.exists
+  notify: Update CA certificates
+
+- name: Display warning if Root CA certificate is missing
+  ansible.builtin.debug:
+    msg: >
+      WARNING: Root CA certificate not found at {{ root_ca_cert_src }}.
+      The Issuing CA cannot validate the trust chain without it.
+      Transfer nomma-root-ca.cert.pem from the offline Root CA environment
+      to root-ca/artifacts/ and re-run this playbook.
+  when: not issuing_ca_root_ca_cert_stat.stat.exists
+
+# ── Import Signed Intermediate CA Certificate ────────────────────────
+- name: Check if signed Intermediate CA certificate exists on control node
+  ansible.builtin.stat:
+    path: "{{ issuing_ca_cert_src }}"
+  delegate_to: localhost
+  become: false
+  register: issuing_ca_issuing_cert_stat
+
+- name: Import signed Intermediate CA certificate onto server
+  ansible.builtin.copy:
+    src: "{{ issuing_ca_cert_src }}"
+    dest: "{{ issuing_ca_cert_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: issuing_ca_issuing_cert_stat.stat.exists
+  # 0644 = world-readable — public certificate, not secret
+
+# ── Import CA Chain ──────────────────────────────────────────────────
+- name: Check if CA chain file exists on control node
+  ansible.builtin.stat:
+    path: "{{ issuing_ca_chain_src }}"
+  delegate_to: localhost
+  become: false
+  register: issuing_ca_chain_stat
+
+- name: Import CA chain file onto server
+  ansible.builtin.copy:
+    src: "{{ issuing_ca_chain_src }}"
+    dest: "{{ issuing_ca_chain_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: issuing_ca_chain_stat.stat.exists
+
+# ── Build CA chain if not provided from Root CA ─────────────────────
+- name: Build CA chain from individual certificates
+  ansible.builtin.shell:
+    cmd: >
+      cat {{ issuing_ca_cert_path }} {{ root_ca_cert_dest }} > {{ issuing_ca_chain_path }}
+    creates: "{{ issuing_ca_chain_path }}"
+  when:
+    - not issuing_ca_chain_stat.stat.exists
+    - issuing_ca_issuing_cert_stat.stat.exists
+    - issuing_ca_root_ca_cert_stat.stat.exists
+
+# ── Validate Trust Chain ─────────────────────────────────────────────
+- name: Verify Intermediate CA certificate against Root CA
+  ansible.builtin.command:
+    cmd: "openssl verify -CAfile {{ root_ca_cert_dest }} {{ issuing_ca_cert_path }}"
+  changed_when: false
+  when:
+    - issuing_ca_root_ca_cert_stat.stat.exists
+    - issuing_ca_issuing_cert_stat.stat.exists
+  register: issuing_ca_chain_verify
+
+- name: Display trust chain verification result
+  ansible.builtin.debug:
+    msg:
+      - "Trust chain verification: {{ issuing_ca_chain_verify.stdout }}"
+      - "If you see 'OK', the chain is valid."
+      - "If you see an error, check that the Root CA certificate and"
+      - "Intermediate CA certificate came from the same Root CA."
+  when: chain_verify is defined and issuing_ca_chain_verify.stdout is defined
+
+# ── Verify Intermediate CA certificate details ───────────────────────
+- name: Display Intermediate CA certificate subject
+  ansible.builtin.command:
+    cmd: "openssl x509 -in {{ issuing_ca_cert_path }} -noout -subject -issuer -dates"
+  changed_when: false
+  when: issuing_ca_issuing_cert_stat.stat.exists
+  register: issuing_ca_cert_details
+
+- name: Show certificate details
+  ansible.builtin.debug:
+    var: issuing_ca_cert_details.stdout_lines
+  when: cert_details is defined and issuing_ca_cert_details.stdout_lines is defined
+
+# ── Install CA certificate into system trust store ───────────────────
+- name: Install Root CA certificate into system trust store
+  ansible.builtin.copy:
+    src: "{{ root_ca_cert_dest }}"
+    dest: "/usr/local/share/ca-certificates/nomma-root-ca.crt"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  when: issuing_ca_root_ca_cert_stat.stat.exists
+  notify: Update CA certificates

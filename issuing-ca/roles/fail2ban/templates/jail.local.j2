@@ -1,0 +1,34 @@
+# {{ ansible_managed }}
+#
+# NOMMA Issuing CA — Fail2Ban Configuration
+# Deployed on Debian 13 (Trixie)
+
+[DEFAULT]
+# Use systemd journal backend (Debian 13 default)
+# systemd reads from journald — no log file parsing needed
+backend = systemd
+
+# Whitelist trusted IPs (add your management subnet here)
+ignoreip = 127.0.0.1/8 ::1
+
+# Ban time: 1 hour (3600 seconds)
+# After a ban expires, the IP is automatically unblocked
+bantime = 3600
+
+# Find time window: 60 seconds
+# Failures must happen within this window to trigger a ban
+findtime = 60
+
+# Max failures before ban: 5 attempts
+# Balances security with usability for legitimate typo scenarios
+maxretry = 5
+
+# Use UFW as the blocking mechanism (consistent with our firewall)
+banaction = ufw
+
+# ── SSH Jail ─────────────────────────────────────────────────────────
+[sshd]
+enabled = true
+# Use the [DEFAULT] settings above
+# No need to redefine maxretry/findtime/bantime here
+# unless you want SSH-specific overrides

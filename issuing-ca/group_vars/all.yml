@@ -1,0 +1,129 @@
+---
+# Global variables for the NOMMA ONLINE Issuing CA build.
+#
+# SECURITY: Secrets (passwords, passphrases) belong in
+#   group_vars/vault.yml — encrypted with Ansible Vault.
+#   This file contains NON-SECRET configuration only.
+
+# ── System User ──────────────────────────────────────────────────────
+admin_user: ldecareaux
+admin_group: ldecareaux
+admin_cert_dir: "/home/{{ admin_user }}/cert"
+# Path on the CONTROL NODE (where Ansible runs) to the SSH public key
+ssh_public_key_path: /home/liam/.ssh/id_rsa_work.pub
+
+# ── Packages ─────────────────────────────────────────────────────────
+# Core dependencies: OpenSSL, security tools, Python
+required_packages:
+  - openssl
+  - ca-certificates
+  - fail2ban
+  - ufw
+  - sudo
+  - python3
+  - python3-apt
+  - nginx
+
+# Networking & troubleshooting tools
+network_packages:
+  - net-tools
+  - iproute2
+  - traceroute
+  - mtr
+  - tcpdump
+  - nmap
+  - netcat-openbsd
+  - ethtool
+
+# DNS & utility tools
+utility_packages:
+  - dnsutils
+  - bind9-dnsutils
+  - bind9-host
+  - whois
+  - less
+  - tree
+  - jq
+  - yq
+  - rsync
+  - unzip
+  - zip
+  - curl
+  - wget
+  - sysstat
+  - logrotate
+
+# ── PKI Subject Information ──────────────────────────────────────────
+# Shared across all certificates issued by this CA
+pki_country: US
+pki_state: Louisiana
+pki_locality: New Orleans
+pki_organization: "NOMMA -- New Orleans Military & Maritime Academy"
+pki_org_unit: PKI Services
+issuing_ca_common_name: "NOMMA Issuing CA"
+
+# ── Issuing CA Directory Layout ──────────────────────────────────────
+# All PKI material lives under this root
+issuing_ca_base_dir: /opt/nomma-issuing-ca
+
+# Subdirectories (auto-created by the issuing_ca role)
+issuing_ca_certs_dir: "{{ issuing_ca_base_dir }}/certs"
+issuing_ca_crl_dir: "{{ issuing_ca_base_dir }}/crl"
+issuing_ca_csr_dir: "{{ issuing_ca_base_dir }}/csr"
+issuing_ca_newcerts_dir: "{{ issuing_ca_base_dir }}/newcerts"
+issuing_ca_private_dir: "{{ issuing_ca_base_dir }}/private"
+issuing_ca_issued_dir: "{{ issuing_ca_base_dir }}/issued"
+issuing_ca_requests_dir: "{{ issuing_ca_base_dir }}/requests"
+issuing_ca_revoked_dir: "{{ issuing_ca_base_dir }}/revoked"
+
+# Key database files
+issuing_ca_index: "{{ issuing_ca_base_dir }}/index.txt"
+issuing_ca_index_attr: "{{ issuing_ca_base_dir }}/index.txt.attr"
+issuing_ca_serial: "{{ issuing_ca_base_dir }}/serial"
+issuing_ca_crlnumber: "{{ issuing_ca_base_dir }}/crlnumber"
+issuing_ca_openssl_cnf: "{{ issuing_ca_base_dir }}/openssl.cnf"
+
+# ── CA Key & Certificate Paths (on the Issuing CA server) ────────────
+issuing_ca_key_path: "{{ issuing_ca_private_dir }}/nomma-issuing-ca.key.pem"
+issuing_ca_cert_path: "{{ issuing_ca_certs_dir }}/nomma-issuing-ca.cert.pem"
+issuing_ca_chain_path: "{{ issuing_ca_certs_dir }}/nomma-ca-chain.cert.pem"
+issuing_ca_crl_path: "{{ issuing_ca_crl_dir }}/nomma-issuing-ca.crl.pem"
+
+# ── Root CA artifacts (imported from offline Root CA) ────────────────
+# These files are transferred ONCE from the offline Root CA environment
+# and placed at a staging location on the control node. The playbook
+# copies them to the target server.
+root_ca_cert_src: "{{ playbook_dir }}/../root-ca/artifacts/nomma-root-ca.cert.pem"
+root_ca_cert_dest: "{{ issuing_ca_certs_dir }}/nomma-root-ca.cert.pem"
+issuing_ca_cert_src: "{{ playbook_dir }}/../root-ca/artifacts/nomma-issuing-ca.cert.pem"
+issuing_ca_chain_src: "{{ playbook_dir }}/../root-ca/artifacts/nomma-ca-chain.cert.pem"
+
+# ── Cryptographic Parameters ─────────────────────────────────────────
+issuing_ca_key_bits: 4096
+issuing_ca_key_algorithm: rsa  # rsa | ec:secp384r1 | ec:secp521r1
+issuing_ca_default_md: sha384
+issuing_ca_days: 3650          # 10 years for the Intermediate CA cert
+server_cert_days: 397          # ~13 months for server certs
+client_cert_days: 397
+crl_days: 30                   # CRL validity period
+
+# ── Domains ──────────────────────────────────────────────────────────
+pki_domains:
+  - nomma.tech
+  - nomma.lan
+
+# ── Firewall ─────────────────────────────────────────────────────────
+ufw_allow_ssh: true
+ufw_allow_https: true
+ufw_allow_http: true            # Needed for CRL distribution over HTTP
+
+# ── Fail2Ban ─────────────────────────────────────────────────────────
+fail2ban_sshd_maxretry: 5
+fail2ban_sshd_findtime: 60      # seconds
+fail2ban_sshd_bantime: 1h
+fail2ban_backend: systemd       # Debian 13 uses systemd journal
+
+# ── OCSP ─────────────────────────────────────────────────────────────
+ocsp_enabled: false             # Enable for OCSP responder deployment
+ocsp_port: 9080
+ocsp_nginx_server_name: "pki.nomma.tech"

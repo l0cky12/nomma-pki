@@ -1,0 +1,41 @@
+---
+# Ansible Vault encrypted variables
+#
+# HOW TO CREATE THIS FILE:
+#   1. Create a vault password file (one-time):
+#        echo "your-strong-password-here" > ~/.ansible/vault-password.txt
+#        chmod 600 ~/.ansible/vault-password.txt
+#
+#   2. Encrypt this file:
+#        ansible-vault encrypt group_vars/vault.yml \
+#          --vault-password-file ~/.ansible/vault-password.txt
+#
+#   3. Edit encrypted variables:
+#        ansible-vault edit group_vars/vault.yml \
+#          --vault-password-file ~/.ansible/vault-password.txt
+#
+#   4. Run the playbook:
+#        ansible-playbook playbooks/site.yml \
+#          --vault-password-file ~/.ansible/vault-password.txt
+#
+# SECURITY NOTES:
+#   - Never commit an unencrypted vault.yml to version control
+#   - Never share the vault password file
+#   - Use a strong, unique password (minimum 20 characters)
+#   - Rotate the vault password periodically
+
+# ── User Password ────────────────────────────────────────────────────
+# Hash generated with: mkpasswd --method=sha-512
+# Replace with your own hash before encrypting:
+#   python3 -c 'import crypt; print(crypt.crypt("password", crypt.mksalt(crypt.METHOD_SHA512)))'
+vault_admin_password: "$6$rounds=656000$CHANGEME$CHANGEMECHANGEMECHANGEMECHANGEMECHANGEMECHANGEMECHANGEME"
+
+# ── Intermediate CA Private Key Passphrase (if key is encrypted) ─────
+# If you generated the Intermediate CA key with a passphrase on the
+# offline Root CA, store that passphrase here.
+# If the key is NOT encrypted (common for online CAs that need to
+# issue certs without human intervention), leave this empty.
+vault_issuing_ca_passphrase: ""
+
+# ── OCSP Signing Key Passphrase (if used) ────────────────────────────
+vault_ocsp_passphrase: ""

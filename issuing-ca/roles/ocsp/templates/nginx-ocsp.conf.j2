@@ -1,0 +1,29 @@
+# {{ ansible_managed }}
+# NOMMA OCSP Responder — Nginx Reverse Proxy
+#
+# Nginx terminates TLS and proxies plain HTTP OCSP requests
+# to the OpenSSL OCSP responder running on localhost.
+
+server {
+    listen 443 ssl http2;
+    server_name {{ ocsp_nginx_server_name }};
+
+    # ── TLS Configuration ─────────────────────────────────────────
+    ssl_certificate     {{ issuing_ca_certs_dir }}/{{ ocsp_nginx_server_name }}.cert.pem;
+    ssl_certificate_key {{ issuing_ca_issued_dir }}/{{ ocsp_nginx_server_name }}.key.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+    ssl_prefer_server_ciphers off;
+
+    # ── OCSP Proxy ────────────────────────────────────────────────
+    location / {
+        proxy_pass http://127.0.0.1:{{ ocsp_port }};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # ── Logging ───────────────────────────────────────────────────
+    access_log /var/log/nginx/ocsp-access.log;
+    error_log  /var/log/nginx/ocsp-error.log;
+}

@@ -1,0 +1,31 @@
+---
+# NOMMA Issuing CA — Fail2Ban Role
+#
+# Protects SSH from brute-force attacks.
+# Uses systemd backend (standard on Debian 13).
+#
+# Settings rationale:
+#   - maxretry=5: Lock out after 5 failures (tight but not punishing for typos)
+#   - findtime=60s: Short window prevents slow attacks
+#   - bantime=1h: Long enough to deter, short enough to self-recover
+
+- name: Install Fail2Ban
+  ansible.builtin.apt:
+    name: fail2ban
+    state: present
+
+- name: Deploy Fail2Ban jail configuration
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Ensure Fail2Ban is enabled and running
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: started
+    enabled: true
+    daemon_reload: true

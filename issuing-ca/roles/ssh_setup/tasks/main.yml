@@ -1,0 +1,28 @@
+---
+# NOMMA Issuing CA — SSH Setup Role
+#
+# Installs the administrator's SSH public key with hardened permissions.
+# The key is read from the CONTROL NODE (where Ansible runs).
+
+- name: Read SSH public key from control node
+  ansible.builtin.slurp:
+    src: "{{ ssh_public_key_path }}"
+  register: ssh_setup_pubkey_raw
+  delegate_to: localhost
+  become: false
+
+- name: Install SSH authorized key
+  ansible.posix.authorized_key:
+    user: "{{ admin_user }}"
+    key: "{{ ssh_setup_pubkey_raw.content | b64decode }}"
+    state: present
+    exclusive: false  # Allow multiple keys; don't wipe existing
+    comment: "ldecareaux work key"
+    manage_dir: true
+
+- name: Harden authorized_keys permissions
+  ansible.builtin.file:
+    path: "/home/{{ admin_user }}/.ssh/authorized_keys"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_group }}"
+    mode: "0600"  # Only owner can read/write; SSH will refuse 0644+

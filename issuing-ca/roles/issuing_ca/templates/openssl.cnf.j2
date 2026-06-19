@@ -1,0 +1,193 @@
+#
+# {{ ansible_managed }}
+#
+# NOMMA Issuing CA — OpenSSL Configuration
+# Intermediate Certificate Authority for:
+#   - nomma.tech
+#   - nomma.lan
+#
+# This Issuing CA signs server, client, and infrastructure certificates.
+# It is signed by the offline NOMMA Root CA.
+#
+# SECURITY: This file and the CA private key must be protected.
+# The private key MUST be mode 0400, owned by root.
+
+HOME                    = .
+RANDFILE                = /dev/urandom
+
+####################################################################
+# CA Default Section — applied to all `openssl ca` commands
+####################################################################
+[ ca ]
+default_ca              = CA_default
+
+[ CA_default ]
+dir                     = {{ issuing_ca_base_dir }}
+certs                   = $dir/certs
+crl_dir                 = $dir/crl
+new_certs_dir           = $dir/newcerts
+database                = $dir/index.txt
+serial                  = $dir/serial
+crlnumber               = $dir/crlnumber
+
+# Certificate and private key of this Issuing CA
+certificate             = $dir/certs/nomma-issuing-ca.cert.pem
+private_key             = $dir/private/nomma-issuing-ca.key.pem
+
+# Default signature algorithm (SHA-384 preferred for RSA 4096)
+default_md              = {{ issuing_ca_default_md }}
+
+# Policy: match organization, state, and country
+# End-entity certs must belong to NOMMA
+policy                  = policy_match
+
+# CA certificate validity in days (10 years)
+default_days            = {{ issuing_ca_days }}
+
+# End-entity certificate validity in days (~13 months)
+default_days            = {{ server_cert_days }}
+
+# CRL validity in days
+default_crl_days        = {{ crl_days }}
+
+# Use SHA-384 for new certificate signatures
+default_md              = sha384
+
+# Keep the certificate and CRL database unique
+unique_subject          = yes
+
+# Copy Subject Alternative Names (SAN) from CSR into issued certificate
+copy_extensions         = copy
+
+# Produce human-readable output
+name_opt                = ca_default
+cert_opt                = ca_default
+
+####################################################################
+# Certificate Request Policy
+# All end-entity certs must match these fields.
+####################################################################
+[ policy_match ]
+countryName             = match
+stateOrProvinceName     = match
+organizationName        = match
+organizationalUnitName  = supplied
+commonName              = supplied
+emailAddress            = optional
+
+####################################################################
+# Policy: CA certificates (for cross-signing or subordinate CAs)
+####################################################################
+[ policy_ca ]
+countryName             = supplied
+stateOrProvinceName     = supplied
+localityName            = supplied
+organizationName        = supplied
+organizationalUnitName  = supplied
+commonName              = supplied
+emailAddress            = optional
+
+####################################################################
+# Request Configuration — used with `openssl req`
+####################################################################
+[ req ]
+default_bits            = {{ issuing_ca_key_bits }}
+default_md              = {{ issuing_ca_default_md }}
+default_keyfile         = privkey.pem
+distinguished_name      = req_distinguished_name
+string_mask             = utf8only
+# Encrypt private keys with AES-256 by default
+encrypt_key             = yes
+prompt                  = no
+
+# Default subject for CSR generation
+[ req_distinguished_name ]
+countryName             = {{ pki_country }}
+stateOrProvinceName     = {{ pki_state }}
+localityName            = {{ pki_locality }}
+organizationName        = {{ pki_organization }}
+organizationalUnitName  = {{ pki_org_unit }}
+
+####################################################################
+# Extensions: Intermediate CA Certificate
+# Applied when the Root CA signs this Intermediate CA cert.
+####################################################################
+[ v3_intermediate_ca ]
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always,issuer
+basicConstraints        = critical, CA:TRUE, pathlen:0
+keyUsage                = critical, digitalSignature, cRLSign, keyCertSign
+
+####################################################################
+# Extensions: Server Certificate (nomma.tech / nomma.lan)
+# TLS server authentication with Subject Alternative Names.
+####################################################################
+[ v3_server_cert ]
+basicConstraints        = critical, CA:FALSE
+keyUsage                = critical, digitalSignature, keyEncipherment
+extendedKeyUsage        = serverAuth
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always,issuer
+crlDistributionPoints   = URI:http://pki.nomma.tech/crl/nomma-issuing-ca.crl.pem
+# OCSP responder URL (uncomment when deployed):
+# authorityInfoAccess   = OCSP;URI:http://pki.nomma.tech:9080
+
+####################################################################
+# Extensions: Client Certificate (user/machine authentication)
+####################################################################
+[ v3_client_cert ]
+basicConstraints        = critical, CA:FALSE
+keyUsage                = critical, digitalSignature
+extendedKeyUsage        = clientAuth
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always,issuer
+crlDistributionPoints   = URI:http://pki.nomma.tech/crl/nomma-issuing-ca.crl.pem
+
+####################################################################
+# Extensions: Infrastructure Certificate
+# For services like LDAP, RADIUS, VPN, mail servers.
+####################################################################
+[ v3_infra_cert ]
+basicConstraints        = critical, CA:FALSE
+keyUsage                = critical, digitalSignature, keyEncipherment
+extendedKeyUsage        = serverAuth, clientAuth
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always,issuer
+crlDistributionPoints   = URI:http://pki.nomma.tech/crl/nomma-issuing-ca.crl.pem
+
+####################################################################
+# Extensions: VPN Certificate
+# TLS server + client auth for VPN endpoints.
+####################################################################
+[ v3_vpn_cert ]
+basicConstraints        = critical, CA:FALSE
+keyUsage                = critical, digitalSignature, keyEncipherment, keyAgreement
+extendedKeyUsage        = serverAuth, clientAuth
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always,issuer
+crlDistributionPoints   = URI:http://pki.nomma.tech/crl/nomma-issuing-ca.crl.pem
+
+####################################################################
+# Extensions: OCSP Signing Certificate
+# Used by the OCSP responder to sign OCSP responses.
+####################################################################
+[ v3_ocsp_cert ]
+basicConstraints        = critical, CA:FALSE
+keyUsage                = critical, digitalSignature
+extendedKeyUsage        = critical, OCSPSigning
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always,issuer
+noCheck                 = yes  # OCSP responses don't need revocation checks
+crlDistributionPoints   = URI:http://pki.nomma.tech/crl/nomma-issuing-ca.crl.pem
+
+####################################################################
+# SAN Configuration — Subject Alternative Names
+# Populate this section per-certificate via CLI -extensions or env vars.
+# Example usage:
+#   SAN="DNS:server.nomma.tech,DNS:server.nomma.lan" \
+#   openssl ca -config openssl.cnf -extensions v3_server_cert \
+#     -in csr.pem -out cert.pem
+####################################################################
+[ alt_names ]
+# DNS.1 = server.nomma.tech
+# DNS.2 = server.nomma.lan

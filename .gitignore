@@ -1,0 +1,51 @@
+# NOMMA PKI — Git Ignore Rules
+
+# ── Ansible ──────────────────────────────────────────────────────────
+# NEVER commit unencrypted vault files
+**/vault.yml
+!**/vault.example.yml
+
+# Ansible retry files
+*.retry
+
+# Ansible galaxy roles
+**/roles/external/
+
+# ── PKI Secrets ──────────────────────────────────────────────────────
+# Private keys — NEVER commit these
+*.key.pem
+*.key.pem.*
+**/private/*.pem
+
+# Certificate Signing Requests (may contain sensitive info)
+**/csr/*.pem
+**/requests/*.pem
+
+# CA database (contains operational state, not secrets but not portable)
+**/index.txt
+**/index.txt.attr
+**/index.txt.old
+**/index.txt.attr.old
+**/serial
+**/serial.old
+**/crlnumber
+**/crlnumber.old
+
+# ── OS / Editor ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.bak
+
+# ── Python ───────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ── Vault password file ──────────────────────────────────────────────
+vault-password.txt
+.vault-password.txt

@@ -1,0 +1,50 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# NOMMA Issuing CA — Interactive CRL Generator
+# Usage: nomma-generate-crl
+#
+# Regenerates the Issuing CA CRL and publishes it to the web directory.
+# Run this manually after revoking certificates or configure cron
+# via the crl_management role.
+
+set -euo pipefail
+
+CA_DIR="{{ issuing_ca_base_dir }}"
+OPENSSL_CNF="${CA_DIR}/openssl.cnf"
+CRL_PATH="${CA_DIR}/crl/nomma-issuing-ca.crl.pem"
+WEB_CRL="/var/www/html/crl/nomma-issuing-ca.crl.pem"
+
+echo "=== NOMMA Issuing CA — CRL Generation ==="
+echo "CA Directory: ${CA_DIR}"
+echo ""
+
+# Check that OpenSSL config exists
+if [[ ! -f "${OPENSSL_CNF}" ]]; then
+    echo "ERROR: OpenSSL config not found at ${OPENSSL_CNF}"
+    exit 1
+fi
+
+# Generate the CRL
+echo "Generating CRL..."
+openssl ca -config "${OPENSSL_CNF}" -gencrl -out "${CRL_PATH}"
+
+if [[ $? -eq 0 ]]; then
+    echo "CRL generated: ${CRL_PATH}"
+else
+    echo "ERROR: CRL generation failed"
+    exit 1
+fi
+
+# Publish to web directory
+if [[ -d /var/www/html/crl ]]; then
+    cp "${CRL_PATH}" "${WEB_CRL}"
+    echo "CRL published: ${WEB_CRL}"
+fi
+
+# Show summary
+echo ""
+echo "CRL Details:"
+openssl crl -in "${CRL_PATH}" -noout -text | grep -E '(Issuer|Last Update|Next Update|Revoked)'
+
+echo ""
+echo "Done. CRL is valid until the Next Update date shown above."

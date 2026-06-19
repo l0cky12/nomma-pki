@@ -1,0 +1,28 @@
+#
+# {{ ansible_managed }}
+# NOMMA VPN Certificate Profile
+# For VPN endpoints that need both server and client auth.
+
+[ req ]
+default_bits            = 2048
+default_md              = sha384
+prompt                  = no
+encrypt_key             = yes
+distinguished_name      = req_distinguished_name
+req_extensions          = req_ext
+
+[ req_distinguished_name ]
+countryName             = {{ pki_country }}
+stateOrProvinceName     = {{ pki_state }}
+localityName            = {{ pki_locality }}
+organizationName        = {{ pki_organization }}
+organizationalUnitName  = {{ pki_org_unit }}
+# REPLACE with VPN endpoint hostname:
+commonName              = vpn.nomma.tech
+
+[ req_ext ]
+subjectAltName          = @alt_names
+
+[ alt_names ]
+# REPLACE with actual DNS names:
+DNS.1 = vpn.nomma.tech

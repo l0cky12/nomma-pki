@@ -1,0 +1,82 @@
+---
+# NOMMA Issuing CA — Certificate Issuance Role
+#
+# Provides workflows for generating keys, CSRs, and issuing
+# server, client, infrastructure, and VPN certificates.
+#
+# This role does NOT automatically issue certificates — it provides
+# the infrastructure and example tasks. Actual issuance is a
+# privileged operation that should be performed deliberately.
+#
+# See the playbook for commented example tasks.
+
+# ── Example Server Certificate Issuance (commented out) ──────────────
+# Uncomment to issue certificates during deployment, or use these
+# tasks as templates for ad-hoc certificate requests.
+#
+# - name: Generate private key for server.nomma.tech
+#   ansible.builtin.command:
+#     cmd: >
+#       openssl genrsa -out {{ issuing_ca_issued_dir }}/server.nomma.tech.key.pem 2048
+#     creates: "{{ issuing_ca_issued_dir }}/server.nomma.tech.key.pem"
+#
+# - name: Secure the private key
+#   ansible.builtin.file:
+#     path: "{{ issuing_ca_issued_dir }}/server.nomma.tech.key.pem"
+#     owner: root
+#     group: root
+#     mode: "0400"
+
+# ── Certificate Templates (reference only) ────────────────────────────
+- name: Create certificate profile reference directory
+  ansible.builtin.file:
+    path: "{{ issuing_ca_base_dir }}/profiles"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy server certificate profile template
+  ansible.builtin.template:
+    src: server-cert-profile.cnf.j2
+    dest: "{{ issuing_ca_base_dir }}/profiles/server-cert-profile.cnf"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy client certificate profile template
+  ansible.builtin.template:
+    src: client-cert-profile.cnf.j2
+    dest: "{{ issuing_ca_base_dir }}/profiles/client-cert-profile.cnf"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy infrastructure certificate profile template
+  ansible.builtin.template:
+    src: infra-cert-profile.cnf.j2
+    dest: "{{ issuing_ca_base_dir }}/profiles/infra-cert-profile.cnf"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy VPN certificate profile template
+  ansible.builtin.template:
+    src: vpn-cert-profile.cnf.j2
+    dest: "{{ issuing_ca_base_dir }}/profiles/vpn-cert-profile.cnf"
+    owner: root
+    group: root
+    mode: "0644"
+
+# ── Post-deployment: ensure issued/requests others exist ─────────────
+- name: Ensure issuance directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ issuing_ca_issued_dir }}"
+    - "{{ issuing_ca_requests_dir }}"
+    - "{{ issuing_ca_revoked_dir }}"

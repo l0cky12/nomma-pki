@@ -1,0 +1,55 @@
+---
+# NOMMA Issuing CA — UFW Firewall Role
+#
+# Hardens the server by denying all inbound traffic except:
+#   - SSH (22/tcp)    — administrative access
+#   - HTTPS (443/tcp) — CRL/OCSP distribution, secure services
+#   - HTTP (80/tcp)   — CRL distribution over HTTP (clients that don't do HTTPS)
+#
+# All outbound traffic is permitted (needed for updates, NTP, etc.)
+
+- name: Install UFW
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: Set default inbound policy to deny
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+    state: enabled
+  notify: Reload UFW
+
+- name: Set default outbound policy to allow
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+    state: enabled
+  notify: Reload UFW
+
+- name: Allow SSH (port 22/tcp)
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+    comment: "SSH administrative access"
+  when: ufw_allow_ssh | bool
+  notify: Reload UFW
+
+- name: Allow HTTPS (port 443/tcp)
+  community.general.ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+    comment: "HTTPS for CRL/OCSP distribution"
+  when: ufw_allow_https | bool
+  notify: Reload UFW
+
+- name: Allow HTTP (port 80/tcp)
+  community.general.ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+    comment: "HTTP for CRL distribution (plaintext clients)"
+  when: ufw_allow_http | bool
+  notify: Reload UFW

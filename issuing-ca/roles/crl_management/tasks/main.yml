@@ -1,0 +1,88 @@
+---
+# NOMMA Issuing CA — CRL Management Role
+#
+# Handles Certificate Revocation List (CRL) generation and publishing.
+# CRLs are critical for clients to know which certificates are revoked.
+#
+# The CRL must be regenerated periodically (before it expires) and
+# published to a location accessible by all relying parties.
+
+# ── CRL Generation Script ────────────────────────────────────────────
+- name: Deploy CRL generation script
+  ansible.builtin.template:
+    src: generate-crl.sh.j2
+    dest: /usr/local/bin/nomma-generate-crl
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Create CRL output directory for web publishing
+  ansible.builtin.file:
+    path: /var/www/html/crl
+    state: directory
+    owner: root
+    group: www-data
+    mode: "0755"
+
+# ── Initial CRL Generation (idempotent) ──────────────────────────────
+- name: Check if CRL exists
+  ansible.builtin.stat:
+    path: "{{ issuing_ca_crl_path }}"
+  register: crl_management_crl_stat
+
+- name: Generate initial CRL
+  ansible.builtin.command:
+    cmd: >
+      openssl ca -config {{ issuing_ca_openssl_cnf }}
+      -gencrl -out {{ issuing_ca_crl_path }}
+    creates: "{{ issuing_ca_crl_path }}"
+  when: not crl_management_crl_management_crl_stat.stat.exists
+
+- name: Publish CRL to web directory
+  ansible.builtin.copy:
+    src: "{{ issuing_ca_crl_path }}"
+    dest: /var/www/html/crl/nomma-issuing-ca.crl.pem
+    remote_src: true
+    owner: root
+    group: www-data
+    mode: "0644"
+
+# ── CRL Validation ───────────────────────────────────────────────────
+- name: Verify CRL structure
+  ansible.builtin.command:
+    cmd: "openssl crl -in {{ issuing_ca_crl_path }} -noout -text"
+  changed_when: false
+  when: crl_management_crl_stat.stat.exists
+  register: crl_management_crl_verify
+
+- name: Display CRL info
+  ansible.builtin.debug:
+    var: crl_management_crl_verify.stdout_lines
+  when: crl_management_crl_verify is defined and crl_management_crl_verify.stdout_lines is defined
+
+# ── CRL Cron Job ────────────────────────────────────────────────────
+- name: Deploy CRL renewal cron script
+  ansible.builtin.copy:
+    content: |
+      #!/bin/bash
+      # NOMMA Issuing CA — CRL Auto-Renewal
+      # Runs daily; regenerates CRL and copies to web root.
+      set -euo pipefail
+      CA_DIR="{{ issuing_ca_base_dir }}"
+      CNF="$CA_DIR/openssl.cnf"
+      CRL="$CA_DIR/crl/nomma-issuing-ca.crl.pem"
+      WEB_DIR="/var/www/html/crl"
+
+      openssl ca -config "$CNF" -gencrl -out "$CRL" 2>&1 | logger -t nomma-crl-gen
+      cp "$CRL" "$WEB_DIR/nomma-issuing-ca.crl.pem"
+      echo "CRL regenerated at $(date)" | logger -t nomma-crl-gen
+
+    dest: /etc/cron.daily/nomma-crl-renew
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Verify CRL renewal script syntax
+  ansible.builtin.command:
+    cmd: "bash -n /etc/cron.daily/nomma-crl-renew"
+  changed_when: false

@@ -1,0 +1,27 @@
+[Unit]
+Description=NOMMA OCSP Responder
+Documentation=https://www.openssl.org/docs/manmaster/man1/openssl-ocsp.html
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/openssl ocsp \
+  -port {{ ocsp_port }} \
+  -text \
+  -index {{ issuing_ca_index }} \
+  -CA {{ issuing_ca_chain_path }} \
+  -rkey /var/lib/ocsp/ocsp-signing.key.pem \
+  -rsigner /var/lib/ocsp/ocsp-signing.cert.pem
+Restart=always
+RestartSec=10
+
+# Hardening
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ocsp
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

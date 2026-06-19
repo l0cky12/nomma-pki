@@ -1,0 +1,143 @@
+---
+# NOMMA ONLINE Issuing CA — Master Playbook
+#
+# Deploys and secures a complete online Issuing Certificate Authority
+# on Debian 13 (Trixie).
+#
+# WHAT THIS PLAYBOOK DOES:
+#   1. Creates the ldecareaux user with vault-encrypted password
+#   2. Installs SSH public key with hardened permissions
+#   3. Configures UFW firewall (deny inbound, allow SSH/HTTPS/HTTP)
+#   4. Installs and configures Fail2Ban for SSH protection
+#   5. Deploys the Issuing CA directory structure and OpenSSL config
+#   6. Imports Root CA certificate and signed Intermediate CA certificate
+#   7. Sets up certificate issuance, renewal, and revocation workflows
+#   8. Configures CRL generation and publishing
+#   9. Optionally deploys OCSP responder (disabled by default)
+#
+# PREREQUISITES (Run from the offline Root CA environment FIRST):
+#   - Root CA has signed the Intermediate CA certificate
+#   - Copy these files into root-ca/artifacts/:
+#       nomma-root-ca.cert.pem       (Root CA certificate)
+#       nomma-issuing-ca.cert.pem    (Signed Intermediate CA certificate)
+#       nomma-ca-chain.cert.pem      (Full chain: Intermediate + Root)
+#   - NEVER copy Root CA private key — it must stay offline
+#
+# RUN:
+#   ansible-playbook -i inventory/hosts.yml playbooks/site.yml \
+#     --vault-password-file ~/.ansible/vault-password.txt
+#
+# DRY RUN (check mode):
+#   ansible-playbook -i inventory/hosts.yml playbooks/site.yml \
+#     --vault-password-file ~/.ansible/vault-password.txt --check
+
+- name: Deploy NOMMA ONLINE Issuing CA
+  hosts: issuing_ca
+  gather_facts: true
+
+  # ── Pre-flight checks (run once before any role) ────────────────────
+  pre_tasks:
+    - name: Verify target is Debian 13 (Trixie)
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Debian"
+          - ansible_distribution_major_version == "13"
+        fail_msg: >
+          This playbook targets Debian 13 (Trixie).
+          Detected {{ ansible_distribution }} {{ ansible_distribution_version }}.
+        success_msg: "Target OS confirmed: Debian 13 (Trixie)"
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      changed_when: false
+
+  # ── ROLES (executed in dependency order) ────────────────────────────
+  roles:
+    # Step 1: System hardening prerequisites
+    - role: user_setup
+      tags: [user, users, system]
+
+    - role: ssh_setup
+      tags: [ssh, security, system]
+
+    - role: ufw
+      tags: [ufw, firewall, security, network]
+
+    - role: fail2ban
+      tags: [fail2ban, security, system]
+
+    # Step 2: PKI infrastructure
+    - role: issuing_ca
+      tags: [ca, pki, issuing-ca, core]
+
+    - role: certificate_issuance
+      tags: [certs, issuance, pki]
+
+    - role: crl_management
+      tags: [crl, revocation, pki]
+
+    # Step 3: Optional OCSP responder (disabled by default)
+    - role: ocsp
+      tags: [ocsp, pki]
+      when: ocsp_enabled | bool
+
+  # ── Post-deployment validation ──────────────────────────────────────
+  post_tasks:
+    - name: Verify OpenSSL configuration syntax
+      ansible.builtin.command:
+        cmd: "openssl version -a"
+      changed_when: false
+      register: openssl_version
+      tags: [verify]
+
+    - name: Show OpenSSL version
+      ansible.builtin.debug:
+        var: openssl_version.stdout_lines
+      tags: [verify]
+
+    - name: Verify CA directory structure exists
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ issuing_ca_base_dir }}"
+        - "{{ issuing_ca_private_dir }}"
+        - "{{ issuing_ca_certs_dir }}"
+        - "{{ issuing_ca_crl_dir }}"
+        - "{{ issuing_ca_openssl_cnf }}"
+      register: ca_dirs
+      tags: [verify]
+
+    - name: Confirm all CA directories present
+      ansible.builtin.assert:
+        that: item.stat.exists
+        success_msg: "{{ item.item }} exists"
+        fail_msg: "MISSING: {{ item.item }}"
+      loop: "{{ ca_dirs.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      tags: [verify]
+
+    - name: Deployment summary
+      ansible.builtin.debug:
+        msg:
+          - "============================================="
+          - "  NOMMA Issuing CA Deployment Complete"
+          - "============================================="
+          - "  CA Directory: {{ issuing_ca_base_dir }}"
+          - "  Certificates: {{ issuing_ca_certs_dir }}"
+          - "  CRL Location: {{ issuing_ca_crl_dir }}"
+          - "  Private Keys: {{ issuing_ca_private_dir }}"
+          - "  OpenSSL Config: {{ issuing_ca_openssl_cnf }}"
+          - "============================================="
+          - ""
+          - "  NEXT STEPS:"
+          - "  1. Verify the CA chain:"
+          - "     openssl verify -CAfile {{ issuing_ca_chain_path }} {{ issuing_ca_cert_path }}"
+          - "  2. Issue a test certificate (see README.md)"
+          - "  3. Generate initial CRL:"
+          - "     openssl ca -config {{ issuing_ca_openssl_cnf }} -gencrl \\"
+          - "       -out {{ issuing_ca_crl_path }}"
+          - "============================================="
+      tags: [verify]
