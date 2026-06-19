@@ -15,13 +15,35 @@
     name: nginx
     state: present
 
+- name: Create OCSP service user (non-root)
+  ansible.builtin.user:
+    name: ocsp
+    group: ocsp
+    shell: /usr/sbin/nologin
+    create_home: false
+    state: present
+
 - name: Create OCSP data directory
   ansible.builtin.file:
     path: /var/lib/ocsp
     state: directory
-    owner: root
-    group: root
+    owner: ocsp
+    group: ocsp
     mode: "0755"
+
+# ── Nginx TLS Certificate Check ────────────────────────────────────────
+- name: Check Nginx TLS certificate exists before deploying OCSP
+  ansible.builtin.stat:
+    path: "{{ issuing_ca_certs_dir }}/{{ ocsp_nginx_server_name }}.cert.pem"
+  register: ocsp_nginx_tls_cert_stat
+
+- name: Warn if Nginx TLS certificate is missing
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: Nginx TLS certificate for {{ ocsp_nginx_server_name }} not found at
+      {{ issuing_ca_certs_dir }}/{{ ocsp_nginx_server_name }}.cert.pem.
+      Nginx will fail to start until this certificate is issued.
+  when: not ocsp_nginx_tls_cert_stat.stat.exists
 
 # ── OCSP Signing Certificate ─────────────────────────────────────────
 # OCSP responses must be signed by either the CA itself or a

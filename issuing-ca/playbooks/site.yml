@@ -24,12 +24,12 @@
 #   - NEVER copy Root CA private key — it must stay offline
 #
 # RUN:
-#   ansible-playbook -i inventory/hosts.yml playbooks/site.yml \
-#     --vault-password-file ~/.ansible/vault-password.txt
+#   ansible-playbook playbooks/site.yml \
+#     --vault-id default@~/.ansible/vault-password.txt
 #
 # DRY RUN (check mode):
-#   ansible-playbook -i inventory/hosts.yml playbooks/site.yml \
-#     --vault-password-file ~/.ansible/vault-password.txt --check
+#   ansible-playbook playbooks/site.yml \
+#     --vault-id default@~/.ansible/vault-password.txt --check
 
 - name: Deploy NOMMA ONLINE Issuing CA
   hosts: issuing_ca

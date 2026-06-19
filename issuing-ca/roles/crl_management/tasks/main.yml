@@ -36,7 +36,7 @@
       openssl ca -config {{ issuing_ca_openssl_cnf }}
       -gencrl -out {{ issuing_ca_crl_path }}
     creates: "{{ issuing_ca_crl_path }}"
-  when: not crl_management_crl_management_crl_stat.stat.exists
+  when: not crl_management_crl_stat.stat.exists
 
 - name: Publish CRL to web directory
   ansible.builtin.copy:

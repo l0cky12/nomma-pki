@@ -7,6 +7,10 @@
 #   - HTTP (80/tcp)   — CRL distribution over HTTP (clients that don't do HTTPS)
 #
 # All outbound traffic is permitted (needed for updates, NTP, etc.)
+#
+# IMPORTANT: Rules are defined BEFORE enabling UFW to prevent
+# SSH lockout. Enabling UFW is the LAST firewall operation so
+# allow rules are active before the default deny takes effect.
 
 - name: Install UFW
   ansible.builtin.apt:
@@ -17,14 +21,12 @@
   community.general.ufw:
     direction: incoming
     policy: deny
-    state: enabled
   notify: Reload UFW
 
 - name: Set default outbound policy to allow
   community.general.ufw:
     direction: outgoing
     policy: allow
-    state: enabled
   notify: Reload UFW
 
 - name: Allow SSH (port 22/tcp)
@@ -52,4 +54,9 @@
     proto: tcp
     comment: "HTTP for CRL distribution (plaintext clients)"
   when: ufw_allow_http | bool
+  notify: Reload UFW
+
+- name: Enable UFW (LAST — after all rules are defined)
+  community.general.ufw:
+    state: enabled
   notify: Reload UFW

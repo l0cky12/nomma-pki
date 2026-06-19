@@ -7,16 +7,16 @@
 #        chmod 600 ~/.ansible/vault-password.txt
 #
 #   2. Encrypt this file:
-#        ansible-vault encrypt group_vars/vault.yml \
-#          --vault-password-file ~/.ansible/vault-password.txt
+#        ansible-vault encrypt inventory/group_vars/all/vault.yml \
+#          --vault-id default@~/.ansible/vault-password.txt
 #
 #   3. Edit encrypted variables:
-#        ansible-vault edit group_vars/vault.yml \
-#          --vault-password-file ~/.ansible/vault-password.txt
+#        ansible-vault edit inventory/group_vars/all/vault.yml \
+#          --vault-id default@~/.ansible/vault-password.txt
 #
 #   4. Run the playbook:
 #        ansible-playbook playbooks/site.yml \
-#          --vault-password-file ~/.ansible/vault-password.txt
+#          --vault-id default@~/.ansible/vault-password.txt
 #
 # SECURITY NOTES:
 #   - Never commit an unencrypted vault.yml to version control

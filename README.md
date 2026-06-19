@@ -150,11 +150,11 @@ chmod 600 ~/.ansible/vault-password.txt
 cp inventory/group_vars/all/vault.example.yml inventory/group_vars/all/vault.yml
 # Edit to set the real password hash
 ansible-vault encrypt inventory/group_vars/all/vault.yml \
-  --vault-password-file ~/.ansible/vault-password.txt
+  --vault-id default@~/.ansible/vault-password.txt
 
 # Run the playbook
-ansible-playbook -i inventory/hosts.yml playbooks/site.yml \
-  --vault-password-file ~/.ansible/vault-password.txt
+ansible-playbook playbooks/site.yml \
+  --vault-id default@~/.ansible/vault-password.txt
 ```
 
 ---

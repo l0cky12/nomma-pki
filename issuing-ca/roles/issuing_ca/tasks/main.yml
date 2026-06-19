@@ -198,7 +198,7 @@
       - "If you see 'OK', the chain is valid."
       - "If you see an error, check that the Root CA certificate and"
       - "Intermediate CA certificate came from the same Root CA."
-  when: chain_verify is defined and issuing_ca_chain_verify.stdout is defined
+  when: issuing_ca_chain_verify.stdout is defined
 
 # ── Verify Intermediate CA certificate details ───────────────────────
 - name: Display Intermediate CA certificate subject
@@ -211,7 +211,7 @@
 - name: Show certificate details
   ansible.builtin.debug:
     var: issuing_ca_cert_details.stdout_lines
-  when: cert_details is defined and issuing_ca_cert_details.stdout_lines is defined
+  when: issuing_ca_cert_details.stdout_lines is defined
 
 # ── Install CA certificate into system trust store ───────────────────
 - name: Install Root CA certificate into system trust store

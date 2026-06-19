@@ -57,15 +57,15 @@ cp inventory/group_vars/all/vault.example.yml inventory/group_vars/all/vault.yml
 python3 -c 'import crypt; print(crypt.crypt("password", crypt.mksalt(crypt.METHOD_SHA512)))'
 # Edit vault.yml with the real hash
 ansible-vault edit inventory/group_vars/all/vault.yml \
-  --vault-password-file ~/.ansible/vault-password.txt
+  --vault-id default@~/.ansible/vault-password.txt
 
 # 5. Run the playbook
-ansible-playbook -i inventory/hosts.yml playbooks/site.yml \
-  --vault-password-file ~/.ansible/vault-password.txt
+ansible-playbook playbooks/site.yml \
+  --vault-id default@~/.ansible/vault-password.txt
 
 # 6. Dry run first (recommended)
-ansible-playbook -i inventory/hosts.yml playbooks/site.yml \
-  --vault-password-file ~/.ansible/vault-password.txt --check --diff
+ansible-playbook playbooks/site.yml \
+  --vault-id default@~/.ansible/vault-password.txt --check --diff
 ```
 
 ---

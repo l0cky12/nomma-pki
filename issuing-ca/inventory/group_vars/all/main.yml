@@ -10,7 +10,7 @@ admin_user: ldecareaux
 admin_group: ldecareaux
 admin_cert_dir: "/home/{{ admin_user }}/cert"
 # Path on the CONTROL NODE (where Ansible runs) to the SSH public key
-ssh_public_key_path: /home/liam/.ssh/id_rsa_work.pub
+ssh_public_key_path: ~/.ssh/id_rsa_work.pub
 
 # ── Packages ─────────────────────────────────────────────────────────
 # Core dependencies: OpenSSL, security tools, Python
@@ -24,15 +24,12 @@ required_packages:
   - python3-apt
   - nginx
 
-# Networking & troubleshooting tools
+# Networking & troubleshooting tools (no packet capture tools on a CA server)
 network_packages:
   - net-tools
   - iproute2
   - traceroute
   - mtr
-  - tcpdump
-  - nmap
-  - netcat-openbsd
   - ethtool
 
 # DNS & utility tools
