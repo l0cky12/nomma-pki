@@ -31,12 +31,24 @@
 #   ansible-playbook playbooks/site.yml \
 #     --vault-id default@~/.ansible/vault-password.txt --check
 
+- name: Install sudo (host may not have it yet)
+  hosts: issuing_ca
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Install sudo via raw module (runs as login user over SSH)
+      ansible.builtin.raw: apt-get update && apt-get install -y sudo
+      changed_when: false
+
 - name: Deploy NOMMA ONLINE Issuing CA
   hosts: issuing_ca
-  gather_facts: true
+  gather_facts: false
 
   # ── Pre-flight checks (run once before any role) ────────────────────
   pre_tasks:
+    - name: Gather facts (now that sudo is installed)
+      ansible.builtin.setup:
+
     - name: Verify target is Debian 13 (Trixie)
       ansible.builtin.assert:
         that:
