@@ -5,7 +5,7 @@ This directory contains the offline Root CA Ansible workflow for the NOMMA PKI h
 The configured Root CA host is:
 
 ```text
-liam@192.168.122.58
+ldecareaux@192.168.122.58
 ```
 
 Run this only against the dedicated offline or isolated Root CA host. The playbook creates:
@@ -70,7 +70,7 @@ ansible-vault encrypt inventory/group_vars/all/vault.yml \
 ### 3. Confirm SSH works
 
 ```bash
-ssh liam@192.168.122.58 'hostname && openssl version'
+ssh ldecareaux@192.168.122.58 'hostname && openssl version'
 ```
 
 ### 4. Install Ansible requirements
