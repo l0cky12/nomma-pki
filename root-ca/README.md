@@ -38,27 +38,48 @@ Never transfer or commit:
 
 ## First run
 
-Create and encrypt the vault file on the control node:
+### 1. Create the vault password file
+
+```bash
+mkdir -p ~/.ansible
+echo "your-strong-vault-password-here" > ~/.ansible/vault-password.txt
+chmod 600 ~/.ansible/vault-password.txt
+```
+
+### 2. Create and encrypt the vault variables
 
 ```bash
 cd root-ca
 cp inventory/group_vars/vault.example.yml inventory/group_vars/vault.yml
-ansible-vault encrypt inventory/group_vars/vault.yml
 ```
 
-Confirm SSH works:
+Edit `inventory/group_vars/vault.yml` and replace the CHANGEME placeholders with real passphrases:
+
+```yaml
+vault_root_ca_key_passphrase: "your-real-root-ca-passphrase"
+vault_issuing_ca_key_passphrase: "your-real-issuing-ca-passphrase"
+```
+
+Then encrypt it:
+
+```bash
+ansible-vault encrypt inventory/group_vars/vault.yml \
+  --vault-password-file ~/.ansible/vault-password.txt
+```
+
+### 3. Confirm SSH works
 
 ```bash
 ssh liam@192.168.122.58 'hostname && openssl version'
 ```
 
-Install any Ansible requirements:
+### 4. Install Ansible requirements
 
 ```bash
 ansible-galaxy collection install -r requirements.yml
 ```
 
-Run the playbook:
+### 5. Run the playbook
 
 ```bash
 ansible-playbook playbooks/site.yml --vault-password-file ~/.ansible/vault-password.txt

@@ -5,6 +5,22 @@
       - inventory_hostname in groups['root_ca']
     fail_msg: "Root CA playbook must run only against hosts in the root_ca inventory group."
 
+- name: Verify vault variables are defined
+  ansible.builtin.assert:
+    that:
+      - vault_root_ca_key_passphrase is defined
+      - vault_issuing_ca_key_passphrase is defined
+      - vault_root_ca_key_passphrase | length > 0
+      - vault_issuing_ca_key_passphrase | length > 0
+      - vault_root_ca_key_passphrase != 'CHANGEME-root-ca-passphrase'
+      - vault_issuing_ca_key_passphrase != 'CHANGEME-issuing-ca-passphrase'
+    fail_msg: >-
+      Vault passphrase variables are missing or still set to the example defaults.
+      Copy inventory/group_vars/vault.example.yml to inventory/group_vars/vault.yml,
+      set real passphrases, and encrypt with ansible-vault before running this playbook.
+      Example: cp inventory/group_vars/vault.example.yml inventory/group_vars/vault.yml
+               ansible-vault encrypt inventory/group_vars/vault.yml
+
 - name: Create Root CA directory structure
   ansible.builtin.file:
     path: "{{ item.path }}"
