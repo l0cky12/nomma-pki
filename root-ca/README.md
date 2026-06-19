@@ -64,7 +64,7 @@ Then encrypt it:
 
 ```bash
 ansible-vault encrypt inventory/group_vars/vault.yml \
-  --vault-password-file ~/.ansible/vault-password.txt
+  --vault-id default@~/.ansible/vault-password.txt
 ```
 
 ### 3. Confirm SSH works
@@ -82,7 +82,8 @@ ansible-galaxy collection install -r requirements.yml
 ### 5. Run the playbook
 
 ```bash
-ansible-playbook playbooks/site.yml --vault-password-file ~/.ansible/vault-password.txt
+ansible-playbook playbooks/site.yml \
+  --vault-id default@~/.ansible/vault-password.txt
 ```
 
 ## Output locations
