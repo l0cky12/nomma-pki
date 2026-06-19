@@ -1,9 +1,9 @@
 ---
-- name: Refuse to run on non-local delegated hosts
+- name: Confirm this playbook is targeting the configured Root CA host
   ansible.builtin.assert:
     that:
-      - inventory_hostname == 'localhost'
-    fail_msg: "Root CA playbook must run on the offline localhost only."
+      - inventory_hostname in groups['root_ca']
+    fail_msg: "Root CA playbook must run only against hosts in the root_ca inventory group."
 
 - name: Create Root CA directory structure
   ansible.builtin.file:

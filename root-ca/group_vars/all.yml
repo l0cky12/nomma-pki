@@ -11,13 +11,17 @@ pki_locality: "New Orleans"
 root_ca_common_name: "NOMMA Offline Root CA"
 issuing_ca_common_name: "NOMMA Issuing CA"
 
-root_ca_base_dir: "{{ playbook_dir }}/../pki/root-ca"
+# Remote Root CA host state. Private keys and CA DB stay on the remote host.
+root_ca_base_dir: "/home/liam/nomma-root-ca/pki/root-ca"
 root_ca_private_dir: "{{ root_ca_base_dir }}/private"
 root_ca_certs_dir: "{{ root_ca_base_dir }}/certs"
 root_ca_csr_dir: "{{ root_ca_base_dir }}/csr"
 root_ca_newcerts_dir: "{{ root_ca_base_dir }}/newcerts"
 root_ca_db_dir: "{{ root_ca_base_dir }}/db"
+
+# Local control-node export directory inside this git repo.
 root_ca_artifacts_dir: "{{ playbook_dir }}/../artifacts"
+root_ca_remote_export_dir: "/home/liam/nomma-root-ca/artifacts"
 
 root_ca_key_path: "{{ root_ca_private_dir }}/nomma-root-ca.key.pem"
 root_ca_cert_path: "{{ root_ca_certs_dir }}/nomma-root-ca.cert.pem"

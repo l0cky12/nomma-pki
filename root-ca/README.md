@@ -2,7 +2,13 @@
 
 This directory contains the offline Root CA Ansible workflow for the NOMMA PKI hierarchy.
 
-Run this only on an offline or air-gapped Root CA host. The playbook creates:
+The configured Root CA host is:
+
+```text
+liam@192.168.122.58
+```
+
+Run this only against the dedicated offline or isolated Root CA host. The playbook creates:
 
 - encrypted Root CA private key
 - self-signed Root CA certificate
@@ -24,15 +30,15 @@ Safe to transfer to the online Issuing CA:
 
 Never transfer or commit:
 
-- `pki/root-ca/private/nomma-root-ca.key.pem`
-- `pki/root-ca/private/nomma-issuing-ca.key.pem`
+- `/home/liam/nomma-root-ca/pki/root-ca/private/nomma-root-ca.key.pem`
+- `/home/liam/nomma-root-ca/pki/root-ca/private/nomma-issuing-ca.key.pem`
 - `group_vars/vault.yml`
 - vault password files
-- CA database files under `pki/root-ca/db/`
+- CA database files under `/home/liam/nomma-root-ca/pki/root-ca/db/`
 
 ## First run
 
-Create and encrypt the vault file:
+Create and encrypt the vault file on the control node:
 
 ```bash
 cd root-ca
@@ -40,22 +46,39 @@ cp group_vars/vault.example.yml group_vars/vault.yml
 ansible-vault encrypt group_vars/vault.yml
 ```
 
-Run the playbook on the offline Root CA host:
+Confirm SSH works:
+
+```bash
+ssh liam@192.168.122.58 'hostname && openssl version'
+```
+
+Install any Ansible requirements:
 
 ```bash
 ansible-galaxy collection install -r requirements.yml
+```
+
+Run the playbook:
+
+```bash
 ansible-playbook playbooks/site.yml --vault-password-file ~/.ansible/vault-password.txt
 ```
 
 ## Output locations
 
-Private CA state is created under:
+Private CA state stays on the remote Root CA host under:
 
 ```text
-root-ca/pki/root-ca/
+/home/liam/nomma-root-ca/pki/root-ca/
 ```
 
-Public transfer files are exported under:
+Public transfer files are staged on the remote host under:
+
+```text
+/home/liam/nomma-root-ca/artifacts/
+```
+
+The playbook also fetches those public files back to this repo on the control node under:
 
 ```text
 root-ca/artifacts/

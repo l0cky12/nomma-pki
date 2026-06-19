@@ -1,31 +1,34 @@
 ---
-- name: Create public artifacts directory
+- name: Create remote public artifacts directory
   ansible.builtin.file:
-    path: "{{ root_ca_artifacts_dir }}"
+    path: "{{ root_ca_remote_export_dir }}"
     state: directory
     mode: "0755"
 
-- name: Export Root CA public certificate
+- name: Stage Root CA public certificate on remote host
   ansible.builtin.copy:
     src: "{{ root_ca_cert_path }}"
-    dest: "{{ root_ca_artifacts_dir }}/nomma-root-ca.cert.pem"
+    dest: "{{ root_ca_remote_export_dir }}/nomma-root-ca.cert.pem"
+    remote_src: true
     mode: "0644"
 
-- name: Export signed Issuing CA public certificate
+- name: Stage signed Issuing CA public certificate on remote host
   ansible.builtin.copy:
     src: "{{ issuing_ca_cert_path }}"
-    dest: "{{ root_ca_artifacts_dir }}/nomma-issuing-ca.cert.pem"
+    dest: "{{ root_ca_remote_export_dir }}/nomma-issuing-ca.cert.pem"
+    remote_src: true
     mode: "0644"
 
-- name: Export public CA chain
+- name: Stage public CA chain on remote host
   ansible.builtin.copy:
     src: "{{ ca_chain_path }}"
-    dest: "{{ root_ca_artifacts_dir }}/nomma-ca-chain.cert.pem"
+    dest: "{{ root_ca_remote_export_dir }}/nomma-ca-chain.cert.pem"
+    remote_src: true
     mode: "0644"
 
-- name: Write public artifact manifest
+- name: Write public artifact manifest on remote host
   ansible.builtin.copy:
-    dest: "{{ root_ca_artifacts_dir }}/MANIFEST.txt"
+    dest: "{{ root_ca_remote_export_dir }}/MANIFEST.txt"
     mode: "0644"
     content: |
       NOMMA PKI public transfer artifacts
@@ -41,3 +44,23 @@
       - {{ issuing_ca_key_path }}
       - vault.yml
       - vault password files
+
+- name: Create local public artifacts directory on control node
+  ansible.builtin.file:
+    path: "{{ root_ca_artifacts_dir }}"
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+  connection: local
+  become: false
+
+- name: Fetch public artifacts back to control node
+  ansible.builtin.fetch:
+    src: "{{ root_ca_remote_export_dir }}/{{ item }}"
+    dest: "{{ root_ca_artifacts_dir }}/{{ item }}"
+    flat: true
+  loop:
+    - nomma-root-ca.cert.pem
+    - nomma-issuing-ca.cert.pem
+    - nomma-ca-chain.cert.pem
+    - MANIFEST.txt

@@ -6,8 +6,7 @@
 # and exports only public artifacts needed by the online Issuing CA.
 
 - name: Build NOMMA offline Root CA and sign Issuing CA
-  hosts: localhost
-  connection: local
+  hosts: root_ca
   gather_facts: true
 
   roles:
