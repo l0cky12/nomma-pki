@@ -30,13 +30,28 @@
     path: "{{ issuing_ca_crl_path }}"
   register: crl_management_crl_stat
 
+- name: Check if Issuing CA certificate exists
+  ansible.builtin.stat:
+    path: "{{ issuing_ca_cert_path }}"
+  register: crl_management_ca_cert_stat
+
+- name: Warn if Issuing CA certificate is missing
+  ansible.builtin.debug:
+    msg: >
+      Issuing CA certificate not found at {{ issuing_ca_cert_path }}.
+      The root-ca playbook must be run first to generate and sign the
+      Issuing CA certificate before CRL generation can succeed.
+  when: not crl_management_ca_cert_stat.stat.exists
+
 - name: Generate initial CRL
   ansible.builtin.command:
     cmd: >
       openssl ca -config {{ issuing_ca_openssl_cnf }}
       -gencrl -out {{ issuing_ca_crl_path }}
     creates: "{{ issuing_ca_crl_path }}"
-  when: not crl_management_crl_stat.stat.exists
+  when:
+    - not crl_management_crl_stat.stat.exists
+    - crl_management_ca_cert_stat.stat.exists
 
 - name: Publish CRL to web directory
   ansible.builtin.copy:
