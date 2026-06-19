@@ -61,6 +61,7 @@
     owner: root
     group: www-data
     mode: "0644"
+  when: crl_management_crl_stat.stat.exists
 
 # ── CRL Validation ───────────────────────────────────────────────────
 - name: Verify CRL structure
