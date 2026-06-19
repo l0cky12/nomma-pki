@@ -147,9 +147,9 @@ echo "your-strong-password" > ~/.ansible/vault-password.txt
 chmod 600 ~/.ansible/vault-password.txt
 
 # Create encrypted vault
-cp inventory/group_vars/vault.example.yml inventory/group_vars/vault.yml
+cp inventory/group_vars/all/vault.example.yml inventory/group_vars/all/vault.yml
 # Edit to set the real password hash
-ansible-vault encrypt inventory/group_vars/vault.yml \
+ansible-vault encrypt inventory/group_vars/all/vault.yml \
   --vault-password-file ~/.ansible/vault-password.txt
 
 # Run the playbook

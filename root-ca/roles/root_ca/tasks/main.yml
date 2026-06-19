@@ -16,10 +16,10 @@
       - vault_issuing_ca_key_passphrase != 'CHANGEME-issuing-ca-passphrase'
     fail_msg: >-
       Vault passphrase variables are missing or still set to the example defaults.
-      Copy inventory/group_vars/vault.example.yml to inventory/group_vars/vault.yml,
+      Copy inventory/group_vars/all/vault.example.yml to inventory/group_vars/all/vault.yml,
       set real passphrases, and encrypt with ansible-vault before running this playbook.
-      Example: cp inventory/group_vars/vault.example.yml inventory/group_vars/vault.yml
-               ansible-vault encrypt inventory/group_vars/vault.yml
+      Example: cp inventory/group_vars/all/vault.example.yml inventory/group_vars/all/vault.yml
+               ansible-vault encrypt inventory/group_vars/all/vault.yml
 
 - name: Create Root CA directory structure
   ansible.builtin.file:

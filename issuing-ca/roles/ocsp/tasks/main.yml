@@ -49,7 +49,8 @@
 #     cmd: >
 #       openssl req -new -key /var/lib/ocsp/ocsp-signing.key.pem
 #       -out /var/lib/ocsp/ocsp-signing.csr.pem
-#       -subj "/C={{ pki_country }}/ST={{ pki_state }}/L={{ pki_locality }}/O={{ pki_organization }}/OU={{ pki_org_unit }}/CN=NOMMA OCSP Responder"
+#       -subj "/C={{ pki_country }}/ST={{ pki_state }}/L={{ pki_locality }}
+#         /O={{ pki_organization }}/OU={{ pki_org_unit }}/CN=NOMMA OCSP Responder"
 #     creates: /var/lib/ocsp/ocsp-signing.csr.pem
 #
 # - name: Issue OCSP signing certificate

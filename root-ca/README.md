@@ -50,7 +50,7 @@ chmod 600 ~/.ansible/vault-password.txt
 
 ```bash
 cd root-ca
-cp inventory/group_vars/vault.example.yml inventory/group_vars/vault.yml
+cp inventory/group_vars/all/vault.example.yml inventory/group_vars/all/vault.yml
 ```
 
 Edit `inventory/group_vars/vault.yml` and replace the CHANGEME placeholders with real passphrases:
@@ -63,7 +63,7 @@ vault_issuing_ca_key_passphrase: "your-real-issuing-ca-passphrase"
 Then encrypt it:
 
 ```bash
-ansible-vault encrypt inventory/group_vars/vault.yml \
+ansible-vault encrypt inventory/group_vars/all/vault.yml \
   --vault-id default@~/.ansible/vault-password.txt
 ```
 
