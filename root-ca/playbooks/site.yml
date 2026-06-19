@@ -20,19 +20,19 @@
       tags: [artifacts, export, pki]
 
   post_tasks:
-    - name: Verify exported Root CA certificate exists
+    - name: Verify exported Root CA certificate exists on remote host
       ansible.builtin.stat:
-        path: "{{ root_ca_artifacts_dir }}/nomma-root-ca.cert.pem"
+        path: "{{ root_ca_remote_export_dir }}/nomma-root-ca.cert.pem"
       register: root_ca_exported_root_cert
 
-    - name: Verify exported Issuing CA certificate exists
+    - name: Verify exported Issuing CA certificate exists on remote host
       ansible.builtin.stat:
-        path: "{{ root_ca_artifacts_dir }}/nomma-issuing-ca.cert.pem"
+        path: "{{ root_ca_remote_export_dir }}/nomma-issuing-ca.cert.pem"
       register: root_ca_exported_issuing_cert
 
-    - name: Verify exported CA chain exists
+    - name: Verify exported CA chain exists on remote host
       ansible.builtin.stat:
-        path: "{{ root_ca_artifacts_dir }}/nomma-ca-chain.cert.pem"
+        path: "{{ root_ca_remote_export_dir }}/nomma-ca-chain.cert.pem"
       register: root_ca_exported_chain
 
     - name: Confirm public artifact export succeeded
@@ -41,5 +41,5 @@
           - root_ca_exported_root_cert.stat.exists
           - root_ca_exported_issuing_cert.stat.exists
           - root_ca_exported_chain.stat.exists
-        success_msg: "Root CA public artifacts are ready in root-ca/artifacts/."
+        success_msg: "Root CA public artifacts staged on remote host at /home/liam/nomma-root-ca/artifacts/."
         fail_msg: "One or more public artifacts failed to export."
