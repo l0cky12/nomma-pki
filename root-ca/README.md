@@ -32,7 +32,7 @@ Never transfer or commit:
 
 - `/home/liam/nomma-root-ca/pki/root-ca/private/nomma-root-ca.key.pem`
 - `/home/liam/nomma-root-ca/pki/root-ca/private/nomma-issuing-ca.key.pem`
-- `group_vars/vault.yml`
+- `inventory/group_vars/vault.yml`
 - vault password files
 - CA database files under `/home/liam/nomma-root-ca/pki/root-ca/db/`
 
@@ -42,8 +42,8 @@ Create and encrypt the vault file on the control node:
 
 ```bash
 cd root-ca
-cp group_vars/vault.example.yml group_vars/vault.yml
-ansible-vault encrypt group_vars/vault.yml
+cp inventory/group_vars/vault.example.yml inventory/group_vars/vault.yml
+ansible-vault encrypt inventory/group_vars/vault.yml
 ```
 
 Confirm SSH works:

@@ -42,7 +42,7 @@ nomma-pki/
 ├── root-ca/                     ← Offline Root CA Ansible project
 │   ├── ansible.cfg
 │   ├── inventory/
-│   ├── group_vars/
+│   ├── inventory/group_vars/
 │   ├── playbooks/
 │   ├── roles/
 │   ├── templates/
@@ -55,7 +55,7 @@ nomma-pki/
 ├── issuing-ca/                  ← Online Issuing CA Ansible project
 │   ├── ansible.cfg
 │   ├── inventory/
-│   ├── group_vars/
+│   ├── inventory/group_vars/
 │   ├── playbooks/
 │   ├── roles/
 │   ├── templates/
@@ -147,9 +147,9 @@ echo "your-strong-password" > ~/.ansible/vault-password.txt
 chmod 600 ~/.ansible/vault-password.txt
 
 # Create encrypted vault
-cp group_vars/vault.example.yml group_vars/vault.yml
+cp inventory/group_vars/vault.example.yml inventory/group_vars/vault.yml
 # Edit to set the real password hash
-ansible-vault encrypt group_vars/vault.yml \
+ansible-vault encrypt inventory/group_vars/vault.yml \
   --vault-password-file ~/.ansible/vault-password.txt
 
 # Run the playbook

@@ -52,11 +52,11 @@ echo "your-strong-vault-password" > ~/.ansible/vault-password.txt
 chmod 600 ~/.ansible/vault-password.txt
 
 # 4. Create encrypted vault file
-cp group_vars/vault.example.yml group_vars/vault.yml
+cp inventory/group_vars/vault.example.yml inventory/group_vars/vault.yml
 # Generate a proper password hash:
 python3 -c 'import crypt; print(crypt.crypt("password", crypt.mksalt(crypt.METHOD_SHA512)))'
 # Edit vault.yml with the real hash
-ansible-vault edit group_vars/vault.yml \
+ansible-vault edit inventory/group_vars/vault.yml \
   --vault-password-file ~/.ansible/vault-password.txt
 
 # 5. Run the playbook
@@ -219,7 +219,7 @@ nomma-generate-crl
 ## OCSP Responder (Optional)
 
 To enable OCSP:
-1. Set `ocsp_enabled: true` in `group_vars/all.yml`
+1. Set `ocsp_enabled: true` in `inventory/group_vars/all.yml`
 2. Issue the OCSP signing certificate (uncomment tasks in the OCSP role)
 3. Re-run the playbook
 
